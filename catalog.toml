@@ -1,0 +1,12 @@
+[[plugin]]
+id = "wktl/okx-monitor"
+name = "OKX Monitor"
+version = "1.0.0"
+updated_at = 1790663319
+added_at = 1790663319
+author = "wktl"
+license = "MIT"
+icon = "chart"
+description = "OKX position monitor — track PnL and K-line charts in the bar."
+plugin_api = 3
+tags = ["crypto", "trading", "finance"]
