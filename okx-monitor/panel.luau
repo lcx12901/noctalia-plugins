@@ -132,7 +132,7 @@ local function decodeKline(kline_raw)
   for i = #data, 1, -1 do
     local candle = data[i]
     local close = tonumber(candle[5]) or 0
-    table.insert(close_prices, 1, close)
+    table.insert(close_prices, close)
   end
   -- Normalize to 0..1 for ui.graph (which defaults minValue=0, maxValue=100)
   local minVal = close_prices[1]
