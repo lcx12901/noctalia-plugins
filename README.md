@@ -29,7 +29,7 @@ plugins = {
       enabled = true;
       name = "wktl";
       kind = "git";
-      location = "https://github.com/wktl/noctalia-plugins";
+      location = "https://github.com/lcx12901/noctalia-plugins";
       auto_update = true;
     }
   ];
@@ -39,3 +39,4 @@ plugins = {
 ## License
 
 MIT
+

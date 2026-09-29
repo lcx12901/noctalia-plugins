@@ -10,3 +10,4 @@ icon = "chart"
 description = "OKX position monitor — track PnL and K-line charts in the bar."
 plugin_api = 3
 tags = ["crypto", "trading", "finance"]
+
