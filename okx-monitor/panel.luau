@@ -40,6 +40,7 @@ local function renderPositionRow(p)
   local color = pnlColor(upl)
 
   return ui.row({
+    key = instId,
     justify = "space_between",
     align = "center",
     paddingH = 16,
@@ -70,8 +71,9 @@ local function render()
   local has_margin = false
   for _, p in ipairs(positions) do
     total_upl = total_upl + (tonumber(p.upl) or 0)
-    local margin = tonumber(p.margin)
-    if margin then
+    -- Cross-margin positions have empty `margin`; fall back to `imr`
+    local margin = tonumber(p.imr) or tonumber(p.margin)
+    if margin and margin ~= 0 then
       total_margin = total_margin + margin
       has_margin = true
     end
@@ -95,7 +97,7 @@ local function render()
   for _, p in ipairs(positions) do
     table.insert(rows, renderPositionRow(p))
   end
-  table.insert(children, ui.column({ gap = 8, flexGrow = 1 }, rows))
+  table.insert(children, ui.scroll({ flexGrow = 1, gap = 8 }, rows))
 
   -- Total summary at bottom
   table.insert(children, ui.row({ justify = "space_between", paddingH = 16, paddingV = 8 }, {

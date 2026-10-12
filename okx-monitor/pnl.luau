@@ -39,15 +39,17 @@ local function render()
     return
   end
 
-  -- Sum total PnL and margin across positions
+  -- Sum total PnL and margin across positions. Cross-margin positions have
+  -- an empty `margin` field; initial margin requirement (`imr`) is the
+  -- reliable base for the aggregate ratio (uplRatio = upl / imr per OKX).
   local total_upl = 0
   local total_margin = 0
   local has_margin = false
 
   for _, p in ipairs(positions) do
     total_upl = total_upl + (tonumber(p.upl) or 0)
-    local margin = tonumber(p.margin)
-    if margin then
+    local margin = tonumber(p.imr) or tonumber(p.margin)
+    if margin and margin ~= 0 then
       total_margin = total_margin + margin
       has_margin = true
     end
