@@ -1,5 +1,5 @@
 --!nonstrict
--- OKX PnL bar widget — shows each position's PnL amount and ratio.
+-- OKX PnL bar widget — shows total floating PnL (amount + ratio) across all positions.
 -- Tertiary color for positive, error for negative. Click to open the panel.
 
 local positions = {}
@@ -7,21 +7,16 @@ local mode = "demo"
 
 local function formatPnl(value)
   local v = tonumber(value)
-  if not v or v == 0 then return "--" end
+  if not v then return "--" end
   local sign = v > 0 and "+" or ""
   return sign .. string.format("%.2f", v)
 end
 
 local function formatRatio(value)
   local v = tonumber(value)
-  if not v or v == 0 then return "" end
+  if not v then return "" end
   local sign = v > 0 and "+" or ""
   return " (" .. sign .. string.format("%.2f%%", v * 100) .. ")"
-end
-
-local function cleanInstId(instId)
-  if not instId then return "?" end
-  return instId:gsub("-USDT%-SWAP$", ""):gsub("-SWAP$", "")
 end
 
 -- Theme color roles: tertiary = positive, error = negative
@@ -44,26 +39,31 @@ local function render()
     return
   end
 
-  local children = {
-    ui.glyph({ name = "chart-line", color = getPnlColor(positions[1].upl) }),
-  }
+  -- Sum total PnL and margin across positions
+  local total_upl = 0
+  local total_margin = 0
+  local has_margin = false
 
-  for i, p in ipairs(positions) do
-    local instId = p.instId or "?"
-    local upl = p.upl or "0"
-    local uplRatio = p.uplRatio or "0"
-    local color = getPnlColor(upl)
-    local text = cleanInstId(instId) .. " " .. formatPnl(upl) .. formatRatio(uplRatio)
-
-    table.insert(children, ui.label({ text = text, fontWeight = "bold", color = color }))
-
-    -- Add separator between positions
-    if i < #positions then
-      table.insert(children, ui.label({ text = "│", color = "outline" }))
+  for _, p in ipairs(positions) do
+    total_upl = total_upl + (tonumber(p.upl) or 0)
+    local margin = tonumber(p.margin)
+    if margin then
+      total_margin = total_margin + margin
+      has_margin = true
     end
   end
 
-  barWidget.render(ui.row({ gap = 2, align = "center" }, children))
+  local total_ratio = has_margin and total_margin ~= 0 and (total_upl / total_margin) or nil
+  local color = getPnlColor(total_upl)
+
+  barWidget.render(ui.row({ gap = 6, align = "center" }, {
+    ui.glyph({ name = "chart-line", color = color }),
+    ui.label({
+      text = prefix .. formatPnl(total_upl) .. " USDT" .. (total_ratio and formatRatio(total_ratio) or ""),
+      fontWeight = "bold",
+      color = color,
+    }),
+  }))
 end
 
 function update()

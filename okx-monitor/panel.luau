@@ -1,33 +1,28 @@
 --!nonstrict
--- OKX Position Panel — shows position details and K-line chart.
--- Reads positions and kline from single noctalia.state key.
+-- OKX Position Panel — lists open positions: name, floating PnL, ratio.
+-- Reads positions from noctalia.state.
 -- Panel does NOT support state.watch — polls via update() only.
 
 local positions = {}
-local kline_prices = {} -- { ["instId"] = { close1, close2, ... } }
 local mode = "demo"
-
-local function formatPrice(price)
-  local p = tonumber(price)
-  if not p then return "--" end
-  if p >= 1000 then
-    return string.format("%.2f", p)
-  elseif p >= 1 then
-    return string.format("%.4f", p)
-  else
-    return string.format("%.6f", p)
-  end
-end
 
 local function cleanInstId(instId)
   if not instId then return "?" end
   return instId:gsub("-USDT%-SWAP$", ""):gsub("-SWAP$", "")
 end
 
+local function formatPrice(price)
+  local p = tonumber(price)
+  if not p then return "--" end
+  local sign = p > 0 and "+" or ""
+  return sign .. string.format("%.2f", p)
+end
+
 local function formatRatio(ratio)
   local r = tonumber(ratio)
   if not r then return "--" end
-  return string.format("%.2f%%", r * 100)
+  local sign = r > 0 and "+" or ""
+  return sign .. string.format("%.2f%%", r * 100)
 end
 
 local function pnlColor(value)
@@ -38,56 +33,25 @@ local function pnlColor(value)
   return "on_surface_variant"
 end
 
-local function renderChart(instId)
-  local prices = kline_prices[instId]
-  if not prices or #prices == 0 then
-    return ui.row({ padding = 8 }, {
-      ui.label({ text = "暂无K线数据", color = "on_surface_variant" }),
-    })
-  end
-
-  return ui.column({ gap = 4, padding = 8, flexGrow = 1 }, {
-    ui.label({ text = "K线 (1分钟)", fontSize = 12, fontWeight = "bold", color = "on_surface" }),
-    ui.graph({
-      values = prices,
-      color = "tertiary",
-      lineWidth = 2,
-      fillOpacity = 0.2,
-      flexGrow = 1,
-    }),
-  })
-end
-
-local function renderPositionCard(p)
+local function renderPositionRow(p)
   local instId = p.instId or "?"
-  local pos = p.pos or "0"
-  local avgPx = p.avgPx or "0"
   local upl = p.upl or "0"
   local uplRatio = p.uplRatio or "0"
-  local lever = p.lever or "?"
-  local mgnRatio = p.mgnRatio or "--"
-  local liqPx = p.liqPx or "--"
   local color = pnlColor(upl)
-  local sign = (tonumber(upl) or 0) > 0 and "+" or ""
 
-  return ui.column({ gap = 8, padding = 12, fill = "surface_variant/0.35", radius = 6, border = "outline", borderWidth = 1, flexGrow = 1, justify = "space_between" }, {
-    ui.row({ justify = "space_between" }, {
-      ui.label({ text = cleanInstId(instId), fontSize = 14, fontWeight = "bold", color = "on_surface" }),
-      ui.label({ text = sign .. formatPrice(upl) .. " USDT", fontSize = 14, fontWeight = "bold", color = color }),
-    }),
-    renderChart(instId),
-    ui.row({ gap = 12 }, {
-      ui.label({ text = "数量: " .. pos, fontSize = 11, color = "on_surface_variant" }),
-      ui.label({ text = "均价: " .. formatPrice(avgPx), fontSize = 11, color = "on_surface_variant" }),
-    }),
-    ui.row({ gap = 12 }, {
-      ui.label({ text = "盈亏: " .. formatRatio(uplRatio), fontSize = 11, color = color }),
-      liqPx ~= "--" and ui.label({ text = "强平: " .. formatPrice(liqPx), fontSize = 11, color = "error" }) or ui.label({}),
-    }),
-    ui.row({ gap = 12 }, {
-      ui.label({ text = "杠杆: " .. lever .. "x", fontSize = 11, color = "on_surface_variant" }),
-      ui.label({ text = "保证金: " .. formatRatio(mgnRatio), fontSize = 11, color = "on_surface_variant" }),
-    }),
+  return ui.row({
+    justify = "space_between",
+    align = "center",
+    paddingH = 16,
+    paddingV = 12,
+    fill = "surface_variant/0.35",
+    radius = 6,
+    border = "outline",
+    borderWidth = 1,
+  }, {
+    ui.label({ text = cleanInstId(instId), fontSize = 14, fontWeight = "bold", color = "on_surface", width = 120 }),
+    ui.label({ text = formatPrice(upl) .. " USDT", fontSize = 14, fontWeight = "bold", color = color, width = 140, textAlign = "right" }),
+    ui.label({ text = formatRatio(uplRatio), fontSize = 14, fontWeight = "bold", color = color, width = 100, textAlign = "right" }),
   })
 end
 
@@ -100,73 +64,59 @@ local function render()
     return
   end
 
+  -- Total row
+  local total_upl = 0
+  local total_margin = 0
+  local has_margin = false
+  for _, p in ipairs(positions) do
+    total_upl = total_upl + (tonumber(p.upl) or 0)
+    local margin = tonumber(p.margin)
+    if margin then
+      total_margin = total_margin + margin
+      has_margin = true
+    end
+  end
+  local total_ratio = has_margin and total_margin ~= 0 and (total_upl / total_margin) or nil
+  local total_color = pnlColor(total_upl)
+
   local children = {
     ui.row({ justify = "space_between" }, {
       ui.label({ text = "OKX 持仓", fontSize = 18, fontWeight = "bold", color = "primary" }),
       ui.label({ text = "模式: " .. mode, fontSize = 12, color = "on_surface_variant" }),
     }),
+    ui.row({ justify = "space_between", paddingH = 16, paddingV = 4 }, {
+      ui.label({ text = "名称", fontSize = 11, color = "on_surface_variant", width = 120 }),
+      ui.label({ text = "浮动收益", fontSize = 11, color = "on_surface_variant", width = 140, textAlign = "right" }),
+      ui.label({ text = "百分比", fontSize = 11, color = "on_surface_variant", width = 100, textAlign = "right" }),
+    }),
   }
 
-  if #positions == 1 then
-    table.insert(children, renderPositionCard(positions[1]))
-  else
-    local cards = {}
-    for _, p in ipairs(positions) do
-      table.insert(cards, renderPositionCard(p))
-    end
-    table.insert(children, ui.row({ gap = 16, flexGrow = 1 }, cards))
+  local rows = {}
+  for _, p in ipairs(positions) do
+    table.insert(rows, renderPositionRow(p))
   end
+  table.insert(children, ui.column({ gap = 8, flexGrow = 1 }, rows))
+
+  -- Total summary at bottom
+  table.insert(children, ui.row({ justify = "space_between", paddingH = 16, paddingV = 8 }, {
+    ui.label({ text = "总浮动收益", fontSize = 13, fontWeight = "bold", color = "on_surface" }),
+    ui.label({
+      text = formatPrice(total_upl) .. " USDT" .. (total_ratio and ("  " .. formatRatio(total_ratio)) or ""),
+      fontSize = 13,
+      fontWeight = "bold",
+      color = total_color,
+    }),
+  }))
 
   panel.render(ui.column({ gap = 12, padding = 16, flexGrow = 1 }, children))
 end
 
--- Decode raw kline JSON string into normalized close prices (0..1)
-local function decodeKline(kline_raw)
-  if not kline_raw or type(kline_raw) ~= "string" then return nil end
-  if kline_raw == "[]" then return nil end
-  local ok, data = pcall(function() return noctalia.json.decode(kline_raw) end)
-  if not ok or type(data) ~= "table" or #data == 0 then return nil end
-  -- OKX candle format: [ts, open, high, low, close, vol, ...], index 5 = close
-  -- Reverse to chronological order (oldest first)
-  local close_prices = {}
-  for i = #data, 1, -1 do
-    local candle = data[i]
-    local close = tonumber(candle[5]) or 0
-    table.insert(close_prices, close)
-  end
-  -- Normalize to 0..1 for ui.graph (which defaults minValue=0, maxValue=100)
-  local minVal = close_prices[1]
-  local maxVal = close_prices[1]
-  for _, v in ipairs(close_prices) do
-    if v < minVal then minVal = v end
-    if v > maxVal then maxVal = v end
-  end
-  local range = maxVal - minVal
-  if range == 0 then range = 1 end
-  local paddedMin = minVal - range * 0.1
-  local paddedRange = range * 1.2
-  local normalized = {}
-  for i, v in ipairs(close_prices) do
-    normalized[i] = (v - paddedMin) / paddedRange
-  end
-  return normalized
-end
-
--- Read positions + kline from state
+-- Read positions from state
 local function syncState()
   local raw = noctalia.state.get("okx-monitor.positions")
   if raw and type(raw) == "table" then
     if raw.positions then positions = raw.positions end
     if raw._mode then mode = raw._mode end
-  end
-  -- Kline stored as JSON string per instId in the positions state
-  if raw and type(raw) == "table" and raw.kline and type(raw.kline) == "table" then
-    for instId, kline_raw in pairs(raw.kline) do
-      local prices = decodeKline(kline_raw)
-      if prices then
-        kline_prices[instId] = prices
-      end
-    end
   end
 end
 

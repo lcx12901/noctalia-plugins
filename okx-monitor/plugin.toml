@@ -1,13 +1,13 @@
 id = "wktl/okx-monitor"
 name = "OKX Monitor"
-version = "1.0.0"
+version = "1.1.0"
 plugin_api = 3
 author = "wktl"
 license = "MIT"
 dependencies = []
 tags = ["crypto", "trading", "finance"]
 icon = "chart"
-description = "OKX position monitor — track PnL and K-line charts in the bar."
+description = "OKX position monitor — total floating PnL in the bar, position list in the panel."
 
 [[setting]]
 key = "mode"

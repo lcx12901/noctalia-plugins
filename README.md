@@ -6,14 +6,14 @@ Personal collection of [Noctalia](https://github.com/noctalia-dev/noctalia) plug
 
 ### OKX Monitor
 
-Track OKX positions, PnL, and K-line charts in the bar.
+Track OKX positions and total floating PnL in the bar, with a position list in the panel.
 
 - **ID**: `wktl/okx-monitor`
-- **Version**: 1.0.0
+- **Version**: 1.1.0
 - **Features**:
   - Position monitoring
-  - Real-time PnL tracking
-  - K-line chart visualization
+  - Total floating PnL (amount + ratio) in the bar
+  - Position list panel (name, PnL, ratio)
 
 ## Installation
 
