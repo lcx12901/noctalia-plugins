@@ -9,10 +9,11 @@ Personal collection of [Noctalia](https://github.com/noctalia-dev/noctalia) plug
 Track OKX positions and total floating PnL in the bar, with a position list in the panel.
 
 - **ID**: `wktl/okx-monitor`
-- **Version**: 1.1.0
+- **Version**: 1.2.0
 - **Features**:
   - Position monitoring
   - Total floating PnL (amount + ratio) in the bar
+  - Total USDT assets in the bar
   - Position list panel (name, PnL, ratio)
 
 ## Installation

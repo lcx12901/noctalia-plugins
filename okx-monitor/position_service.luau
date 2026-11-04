@@ -4,11 +4,12 @@
 -- Calls okx CLI via noctalia.runAsync, publishes position data
 -- to noctalia.state for widget and panel.
 
-noctalia.setUpdateInterval(1000)
+noctalia.setUpdateInterval(2000)
 
 local STATE_DIR = noctalia.expandPath("~/.local/share/noctalia/plugins/okx-monitor")
 local current_mode = noctalia.getConfig("mode") or "demo"
 local pos_fetching = false
+local bal_fetching = false
 
 local function updatePositions()
   if pos_fetching then return end
@@ -46,20 +47,65 @@ local function updatePositions()
   end)
 end
 
+-- USDT equity (trading account) for the bar's total-assets display.
+local function updateBalance()
+  if bal_fetching then return end
+  bal_fetching = true
+
+  local profile_flag = current_mode == "live" and "--profile live" or "--profile demo"
+  local cmd = "okx " .. profile_flag .. " account balance USDT --json 2>/dev/null"
+
+  noctalia.runAsync(cmd, function(result)
+    bal_fetching = false
+
+    local stdout = (result and result.stdout) or ""
+    stdout = stdout:gsub("^%s+", ""):gsub("%s+$", "")
+
+    local eq
+    if stdout ~= "" and stdout ~= "[]" then
+      local ok, accounts = pcall(function()
+        return noctalia.json.decode(stdout)
+      end)
+      if ok and type(accounts) == "table" then
+        for _, acct in ipairs(accounts) do
+          for _, d in ipairs(acct.details or {}) do
+            if d.ccy == "USDT" and tonumber(d.eq) then
+              eq = d.eq
+              break
+            end
+          end
+          if eq then break end
+        end
+      end
+    end
+
+    noctalia.state.set("okx-monitor.balance", {
+      eq = eq,
+      _updated_at = os.time(),
+      _mode = current_mode,
+    })
+  end)
+end
+
 noctalia.state.watch("okx-monitor.cmd", function(cmd)
   if cmd == "set_mode:demo" then
     current_mode = "demo"
     updatePositions()
+    updateBalance()
   elseif cmd == "set_mode:live" then
     current_mode = "live"
     updatePositions()
+    updateBalance()
   elseif cmd == "refresh" then
     updatePositions()
+    updateBalance()
   end
 end)
 
 updatePositions()
+updateBalance()
 
 function update()
   updatePositions()
+  updateBalance()
 end
